@@ -3,7 +3,10 @@ import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
-
+import "hardhat-contract-sizer";
+import "solidity-coverage";
+import "hardhat-gas-reporter";
+import "hardhat-log-remover";
 import { config } from "dotenv";
 config();
 

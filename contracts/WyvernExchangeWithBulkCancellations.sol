@@ -1,5 +1,7 @@
 pragma solidity 0.4.26;
 
+import "hardhat/console.sol";
+
 library SafeMath {
 
   /**
@@ -651,6 +653,7 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
         assembly {
             hash := keccak256(add(array, 0x20), size)
         }
+
         return hash;
     }
 

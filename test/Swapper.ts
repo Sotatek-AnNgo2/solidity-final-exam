@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { it } from "mocha";
 import { expect } from "chai";
-import { Swapper } from "../typechain-types";
+import { WyvernExchangeWithBulkCancellations } from "../typechain-types";
 import { BaseContract } from "ethers";
 
 const TOKEN_A_TOTAL_SUPPLY = 1e10;
@@ -26,7 +26,7 @@ describe("Swapper contract", function () {
     const swapper = (await upgrades.deployProxy(Swapper, [
       owner.address,
       treasury.address,
-    ])) as BaseContract as Swapper;
+    ])) as BaseContract as WyvernExchangeWithBulkCancellations;
     await swapper.waitForDeployment();
 
     const Token = await ethers.getContractFactory("ERC20Mock");
