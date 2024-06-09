@@ -1,7 +1,5 @@
 pragma solidity 0.4.26;
 
-import "hardhat/console.sol";
-
 library SafeMath {
 
   /**
