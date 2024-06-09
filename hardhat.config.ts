@@ -11,7 +11,16 @@ import { config } from "dotenv";
 config();
 
 const hardhatConfig: HardhatUserConfig = {
-  solidity: "0.4.26",
+  solidity: {
+    version: "0.4.26",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
+  contractSizer: {},
   namedAccounts: {
     deployer: {
       default: 0,
@@ -33,7 +42,7 @@ const hardhatConfig: HardhatUserConfig = {
     apiKey: {
       sepolia: 'YNT1GHTV5DXIF7QU63WTNURWPKW1Y99XE7'
     }
-  }
+  },
 };
 
 export default hardhatConfig;

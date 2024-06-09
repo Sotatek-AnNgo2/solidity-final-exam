@@ -381,7 +381,8 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
     uint256 private constant _CHAIN_ID = 1;
 
     // Note: the domain separator is derived and verified in the constructor. */
-    bytes32 public constant DOMAIN_SEPARATOR = 0x72982d92449bfb3d338412ce4738761aff47fb975ceb17a1bc3712ec716a5a68;
+    // bytes32 public constant DOMAIN_SEPARATOR = 0x72982d92449bfb3d338412ce4738761aff47fb975ceb17a1bc3712ec716a5a68;
+    bytes32 public DOMAIN_SEPARATOR;
 
     /* The token used to pay exchange fees. */
     ERC20 public exchangeToken;
@@ -492,7 +493,8 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
         require(keccak256(bytes(name)) == _NAME_HASH);
         require(keccak256(bytes(version)) == _VERSION_HASH);
         require(keccak256("Order(address exchange,address maker,address taker,uint256 makerRelayerFee,uint256 takerRelayerFee,uint256 makerProtocolFee,uint256 takerProtocolFee,address feeRecipient,uint8 feeMethod,uint8 side,uint8 saleKind,address target,uint8 howToCall,bytes calldata,bytes replacementPattern,address staticTarget,bytes staticExtradata,address paymentToken,uint256 basePrice,uint256 extra,uint256 listingTime,uint256 expirationTime,uint256 salt,uint256 nonce)") == _ORDER_TYPEHASH);
-        require(DOMAIN_SEPARATOR == _deriveDomainSeparator());
+        // require(DOMAIN_SEPARATOR == _deriveDomainSeparator());
+        DOMAIN_SEPARATOR = _deriveDomainSeparator();
     }
 
     /**
@@ -663,7 +665,8 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
      */
     function hashToSign(Order memory order, uint nonce)
         internal
-        pure
+        view
+        // pure
         returns (bytes32)
     {
         return keccak256(
