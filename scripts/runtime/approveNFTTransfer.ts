@@ -1,8 +1,9 @@
 import { ethers } from 'hardhat';
 import { readData } from '../util/file';
 import { ERC721Mock__factory } from '../../typechain';
+import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 
-async function approveNFTTransfer() {
+async function approveNftTransfer(nftOwner?: HardhatEthersSigner) {
   const [deployer, seller] = await ethers.getSigners();
 
   // Read deployed contract data
@@ -12,8 +13,10 @@ async function approveNFTTransfer() {
   // Wyvern Exchange contract address
   const wyvernExchangeAddress = deployed.wyvernExchangeWithBulkCancellations; // Replace with the actual Wyvern Exchange address
 
+  const signer = nftOwner ?? seller;
+
   // Connect to the deployed ERC721Mock contract
-  const contract = ERC721Mock__factory.connect(contractAddress, seller);
+  const contract = ERC721Mock__factory.connect(contractAddress, signer);
 
   // Call setApprovalForAll to approve the Wyvern Exchange contract
   const tx = await contract.setApprovalForAll(wyvernExchangeAddress, true);
@@ -24,7 +27,7 @@ async function approveNFTTransfer() {
   console.log('NFT transfer approved for Wyvern Exchange');
 }
 
-approveNFTTransfer().catch((error) => {
-  console.error('Error approving NFT transfer:', error);
-  process.exit(1);
-});
+// approveNftTransfer().catch((error) => {
+//   console.error('Error approving NFT transfer:', error);
+//   process.exit(1);
+// });

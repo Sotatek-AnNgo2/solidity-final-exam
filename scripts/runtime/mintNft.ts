@@ -25,4 +25,6 @@ async function mintNFT(mintFor?: string) {
   return result
 }
 
-mintNFT().catch(console.error);
+export default mintNFT;
+
+// mintNFT().catch(console.error);
