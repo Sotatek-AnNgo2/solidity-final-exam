@@ -12,17 +12,36 @@ config();
 
 const hardhatConfig: HardhatUserConfig = {
   solidity: {
-    version: "0.4.26",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200
+    compilers: [
+      {
+        version: "0.4.26",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          }
+        }
+      },
+      {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          }
+        }
       }
-    }
+    ]
   },
   contractSizer: {},
   namedAccounts: {
     deployer: {
+      default: 0,
+    },
+    seller: {
+      default: 0,
+    },
+    buyer: {
       default: 0,
     },
   },
@@ -43,6 +62,13 @@ const hardhatConfig: HardhatUserConfig = {
       sepolia: 'YNT1GHTV5DXIF7QU63WTNURWPKW1Y99XE7'
     }
   },
+  paths: {
+    deploy: 'scripts/deploy'
+  },
+  typechain: {
+    outDir: 'typechain',
+    target: 'ethers-v6',
+  }
 };
 
 export default hardhatConfig;

@@ -4,7 +4,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "typechain": "hardhat typechain",
-    "deploy": "hardhat deploy"
+    "deploy": "hardhat deploy",
+    "dev": "hardhat node --watch"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
