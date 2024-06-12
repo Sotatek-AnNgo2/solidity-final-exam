@@ -1,5 +1,7 @@
 pragma solidity 0.4.26;
 
+import "hardhat/console.sol";
+
 library SafeMath {
 
   /**
@@ -759,10 +761,16 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
             return false;
         }
 
+        // console.logUint(sig.v);
+        // console.logBytes32(sig.r);
+        // console.logBytes32(sig.s);
+        // console.log("recover address %s", ecrecover(hash, sig.v, sig.r, sig.s));
+        // console.log("signer address %s", order.maker);
         /* recover via ECDSA, signed by maker (already verified as non-zero). */
         if (ecrecover(hash, sig.v, sig.r, sig.s) == order.maker) {
             return true;
         }
+        // console.logInt(27);
 
         /* fallback — attempt EIP-1271 isValidSignature check. */
         return _tryContractSignature(order.maker, hash, sig);
@@ -1116,9 +1124,10 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
         } else {
             sellHash = _requireValidOrderWithNonce(sell, sellSig);
         }
-
+        console.log("1");
         /* Must be matchable. */
         require(ordersCanMatch(buy, sell));
+        console.log("2");
 
         /* Target must exist (prevent malicious selfdestructs just prior to order settlement). */
         uint size;
@@ -1127,24 +1136,31 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
             size := extcodesize(target)
         }
         require(size > 0);
+        console.log("3");
 
         /* Must match calldata after replacement, if specified. */
         if (buy.replacementPattern.length > 0) {
           ArrayUtils.guardedArrayReplace(buy.calldata, sell.calldata, buy.replacementPattern);
         }
+        console.log("4");
         if (sell.replacementPattern.length > 0) {
           ArrayUtils.guardedArrayReplace(sell.calldata, buy.calldata, sell.replacementPattern);
         }
+        console.log("5");
         require(ArrayUtils.arrayEq(buy.calldata, sell.calldata));
+        console.log("6");
 
         /* Retrieve delegateProxy contract. */
         OwnableDelegateProxy delegateProxy = registry.proxies(sell.maker);
+        console.log("7");
 
         /* Proxy must exist. */
         require(delegateProxy != address(0));
+        console.log("8");
 
         /* Access the passthrough AuthenticatedProxy. */
         AuthenticatedProxy proxy = AuthenticatedProxy(delegateProxy);
+        console.log("9");
 
         /* EFFECTS */
 
@@ -1155,6 +1171,7 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
         if (msg.sender != sell.maker) {
             cancelledOrFinalized[sellHash] = true;
         }
+        console.log("10");
 
         /* INTERACTIONS */
 
@@ -1184,6 +1201,7 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
     }
 
     function _requireValidOrderWithNonce(Order memory order, Sig memory sig) internal view returns (bytes32) {
+        console.logUint(nonces[order.maker]);
         return requireValidOrder(order, sig, nonces[order.maker]);
     }
 }
@@ -1496,7 +1514,7 @@ contract Exchange is ExchangeCore {
         public
         payable
     {
-
+// Order(address exchange,address maker,address taker,uint256 makerRelayerFee,uint256 takerRelayerFee,uint256 makerProtocolFee,uint256 takerProtocolFee,address feeRecipient,uint8 feeMethod,uint8 side,uint8 saleKind,address target,uint8 howToCall,bytes calldata,bytes replacementPattern,address staticTarget,bytes staticExtradata,address paymentToken,uint256 basePrice,uint256 extra,uint256 listingTime,uint256 expirationTime,uint256 salt,uint256 nonce)
         return atomicMatch(
           Order(addrs[0], addrs[1], addrs[2], uints[0], uints[1], uints[2], uints[3], addrs[3], FeeMethod(feeMethodsSidesKindsHowToCalls[0]), SaleKindInterface.Side(feeMethodsSidesKindsHowToCalls[1]), SaleKindInterface.SaleKind(feeMethodsSidesKindsHowToCalls[2]), addrs[4], AuthenticatedProxy.HowToCall(feeMethodsSidesKindsHowToCalls[3]), calldataBuy, replacementPatternBuy, addrs[5], staticExtradataBuy, ERC20(addrs[6]), uints[4], uints[5], uints[6], uints[7], uints[8]),
           Sig(vs[0], rssMetadata[0], rssMetadata[1]),

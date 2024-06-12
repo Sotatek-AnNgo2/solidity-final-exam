@@ -31,3 +31,5 @@ async function approveNftTransfer(nftOwner?: HardhatEthersSigner) {
 //   console.error('Error approving NFT transfer:', error);
 //   process.exit(1);
 // });
+
+export default approveNftTransfer;
