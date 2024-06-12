@@ -4,6 +4,8 @@ import { readData } from "../util/file";
 import { ERC721Mock__factory, StandardToken__factory, WyvernExchangeWithBulkCancellations__factory } from "../../typechain";
 import { FeeMethod, HowToCall, SaleKind, Side } from "../util/enum";
 import approveNftTransfer from "./approveNFTTransfer";
+import registerProxy from "./registerProxy";
+import grantInitialAuthentication from "./grantInitialAuthentication";
 
 interface Order {
   exchange: string;
@@ -73,17 +75,20 @@ const types = {
   ]
 };
 
-async function createOrders() {
+async function listOrderAtomicMatch() {
   const [deployer, seller, buyer] = await ethers.getSigners();
   const mintedNft = await mintNFT()
-  await approveNftTransfer()
-
+  const proxyAddress = await registerProxy()
+  await approveNftTransfer(seller, proxyAddress)
+  await grantInitialAuthentication(deployed.wyvernExchangeWithBulkCancellations).catch(() => console.log('already grantInitialAuthentication'))
   const sellerNonce = deployed.sellerNonce ?? 0
   const buyerNonce = deployed.buyerNonce ?? 0
 
   // const paymentToken = StandardToken__factory.connect(deployed.standardToken)
 
-  const erc721Token = ERC721Mock__factory.connect(deployed.ERC721Mock)
+  const erc721Token = ERC721Mock__factory.connect(deployed.ERC721Mock, seller)
+  console.log('nft owner before', await erc721Token.ownerOf(mintedNft.tokenId))
+
   // ================================ Create Seller Order ================================
   const wyvernExchangeWithSellerSigner = WyvernExchangeWithBulkCancellations__factory.connect(deployed.wyvernExchangeWithBulkCancellations, seller)
 
@@ -151,10 +156,8 @@ async function createOrders() {
   const sellerSplitSignature = ethers.Signature.from(sellerSignature)
 
   Object.assign(sellerOrder, { r: sellerSplitSignature.r, s: sellerSplitSignature.s, v: sellerSplitSignature.v })
-  const recoveredAddress = ethers.verifyMessage(sellOrderHash, sellerSplitSignature)
-  console.log({ recoveredAddress })
-  console.log({ sellOrderHash })
-  console.log("sellerOrder", sellerOrder);
+  // console.log({ sellOrderHash })
+  // console.log("sellerOrder", sellerOrder);
 
   // ================================ Create Buyer Order ================================
   const wyvernExchangeWithBuyerSigner = WyvernExchangeWithBulkCancellations__factory.connect(deployed.wyvernExchangeWithBulkCancellations, buyer)
@@ -221,11 +224,11 @@ async function createOrders() {
   const buyerSplitSignature = ethers.Signature.from(buyerSignature)
 
   Object.assign(buyerOrder, { r: buyerSplitSignature.r, s: buyerSplitSignature.s, v: buyerSplitSignature.v })
-  console.log({ buyOrderHash })
-  console.log(buyerOrder)
+  // console.log({ buyOrderHash })
+  // console.log(buyerOrder)
 
   // ================================ Call Atomic Match ================================
-  const result = await wyvernExchangeWithBuyerSigner.atomicMatch_(
+  const tx = await wyvernExchangeWithBuyerSigner.atomicMatch_(
     [
       buyerOrder.exchange,
       buyerOrder.maker,
@@ -292,7 +295,10 @@ async function createOrders() {
     { value: buyerOrder.basePrice }
   )
 
-  console.log(result)
+  await tx.wait()
+
+  console.log('nft owner after', await erc721Token.ownerOf(mintedNft.tokenId))
+  // console.log(result)
 }
 
-createOrders()
+listOrderAtomicMatch()

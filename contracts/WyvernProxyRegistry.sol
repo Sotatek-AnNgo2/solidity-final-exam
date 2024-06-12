@@ -1,4 +1,6 @@
 pragma solidity ^0.4.13;
+import "hardhat/console.sol";
+
 
 contract Ownable {
   address public owner;
@@ -112,7 +114,7 @@ contract ProxyRegistry is Ownable {
        a malicious but rational attacker could buy half the Wyvern and grant themselves access to all the proxy contracts. A delay period renders this attack nonthreatening - given two weeks, if that happened, users would have
        plenty of time to notice and transfer their assets.
     */
-    uint public DELAY_PERIOD = 2 weeks;
+    uint public DELAY_PERIOD = 1 minutes;
 
     /**
      * Start the process to enable access for specified contract. Subject to delay period.
@@ -306,12 +308,25 @@ contract AuthenticatedProxy is TokenRecipient, OwnedUpgradeabilityStorage {
         public
         returns (bool result)
     {
+        console.log("20");
+        console.log("user %s", user);
+        console.log("msg.sender %s", msg.sender);
+        console.log("revoked %s", revoked);
+        console.log("registry.contracts(msg.sender) %s", registry.contracts(msg.sender));
         require(msg.sender == user || (!revoked && registry.contracts(msg.sender)));
+        console.log("21");
+
         if (howToCall == HowToCall.Call) {
+        console.log("22");
+        console.log("dest %s", dest);
+        console.logAddress(address(this));
+        console.logBytes(calldata);
             result = dest.call(calldata);
         } else if (howToCall == HowToCall.DelegateCall) {
+        console.log("23");
             result = dest.delegatecall(calldata);
         }
+        console.log("result %s", result);
         return result;
     }
 

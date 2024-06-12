@@ -3,7 +3,7 @@ import { readData } from '../util/file';
 import { ERC721Mock__factory } from '../../typechain';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 
-async function approveNftTransfer(nftOwner?: HardhatEthersSigner) {
+async function approveNftTransfer(nftOwner?: HardhatEthersSigner, addressToApprove?: string) {
   const [deployer, seller] = await ethers.getSigners();
 
   // Read deployed contract data
@@ -19,7 +19,7 @@ async function approveNftTransfer(nftOwner?: HardhatEthersSigner) {
   const contract = ERC721Mock__factory.connect(contractAddress, signer);
 
   // Call setApprovalForAll to approve the Wyvern Exchange contract
-  const tx = await contract.setApprovalForAll(wyvernExchangeAddress, true);
+  const tx = await contract.setApprovalForAll(addressToApprove ?? wyvernExchangeAddress, true);
   console.log('Approval transaction hash:', tx.hash);
 
   // Wait for the transaction to be mined

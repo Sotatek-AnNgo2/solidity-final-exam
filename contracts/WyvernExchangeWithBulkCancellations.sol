@@ -1153,6 +1153,7 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
         /* Retrieve delegateProxy contract. */
         OwnableDelegateProxy delegateProxy = registry.proxies(sell.maker);
         console.log("7");
+        console.log("%s", delegateProxy);
 
         /* Proxy must exist. */
         require(delegateProxy != address(0));
@@ -1177,12 +1178,15 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
 
         /* Execute funds transfer and pay fees. */
         uint price = executeFundsTransfer(buy, sell);
+        console.log("11");
 
         /* Assert implementation. */
         require(delegateProxy.implementation() == registry.delegateProxyImplementation());
+        console.log("12");
 
         /* Execute specified call through proxy. */
         require(proxy.proxy(sell.target, sell.howToCall, sell.calldata));
+        console.log("13");
 
         /* Static calls are intentionally done after the effectful call so they can check resulting state. */
 
@@ -1190,11 +1194,13 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
         if (buy.staticTarget != address(0)) {
             require(staticCall(buy.staticTarget, sell.calldata, buy.staticExtradata));
         }
+        console.log("14");
 
         /* Handle sell-side static call if specified. */
         if (sell.staticTarget != address(0)) {
             require(staticCall(sell.staticTarget, sell.calldata, sell.staticExtradata));
         }
+        console.log("15");
 
         /* Log match event. */
         emit OrdersMatched(buyHash, sellHash, sell.feeRecipient != address(0) ? sell.maker : buy.maker, sell.feeRecipient != address(0) ? buy.maker : sell.maker, price, metadata);
