@@ -8,15 +8,16 @@ config();
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
-  const erc721Mock = await deploy("ERC721Mock", {
+  const erc20Mock = await deploy("ERC20Mock", {
     from: deployer,
     log: true,
+    args: [1000000]
   });
 
   saveData({
-    erc721Mock: erc721Mock.address,
+    erc20Mock: erc20Mock.address
   })
 };
 export default func;
-func.id = "erc721Mock"; // id required to prevent reexecution
-func.tags = ["erc721Mock"];
+func.id = "erc20Mock"; // id required to prevent reexecution
+func.tags = ["erc20Mock"];

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract ERC721Mock is ERC721URIStorage, Ownable {
   uint256 public tokenCounter;
 
-  constructor() ERC721("MyNFT", "NFT") Ownable(msg.sender) {
+  constructor() ERC721("ERC721Mock", "E721") Ownable(msg.sender) {
     tokenCounter = 0;
   }
 

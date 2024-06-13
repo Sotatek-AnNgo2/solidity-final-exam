@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { readData } from '../util/file';
-import { ERC721Mock__factory, WyvernProxyRegistry__factory } from '../../typechain';
+import { WyvernProxyRegistry__factory } from '../../typechain';
 
 async function grantInitialAuthentication(authAddress: string) {
   const [deployer, seller, buyer] = await ethers.getSigners();

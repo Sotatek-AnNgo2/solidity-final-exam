@@ -1,97 +1,33 @@
 import { ethers } from "hardhat";
 import mintNFT from "./mintNft";
 import { readData } from "../util/file";
-import { ERC721Mock__factory, StandardToken__factory, WyvernExchangeWithBulkCancellations__factory } from "../../typechain";
+import { ERC721Mock__factory, WyvernExchangeWithBulkCancellations__factory } from "../../typechain";
 import { FeeMethod, HowToCall, SaleKind, Side } from "../util/enum";
 import approveNftTransfer from "./approveNFTTransfer";
 import registerProxy from "./registerProxy";
 import grantInitialAuthentication from "./grantInitialAuthentication";
-
-interface Order {
-  exchange: string;
-  maker: string;
-  taker: string;
-  makerRelayerFee: number;
-  takerRelayerFee: number;
-  makerProtocolFee: number;
-  takerProtocolFee: number;
-  feeRecipient: string;
-  feeMethod: FeeMethod;
-  side: Side;
-  saleKind: SaleKind;
-  target: string;
-  howToCall: HowToCall;
-  calldata: string;
-  replacementPattern: string;
-  staticTarget: string;
-  staticExtradata: string;
-  paymentToken: string;
-  basePrice: string;
-  extra: string;
-  listingTime: number;
-  expirationTime: number;
-  salt: number;
-  nonce: number;
-  r?: string;
-  s?: string;
-  v?: 27 | 28;
-}
+import signOrder, { Order } from "./signOrder";
 
 const deployed = readData()
 
-const domain = {
-  name: 'Wyvern Exchange Contract',
-  version: '2.3',
-  chainId: 1,
-  verifyingContract: deployed.wyvernExchangeWithBulkCancellations
-}
-
-const types = {
-  Order: [
-    { name: 'exchange', type: 'address' },
-    { name: 'maker', type: 'address' },
-    { name: 'taker', type: 'address' },
-    { name: 'makerRelayerFee', type: 'uint256' },
-    { name: 'takerRelayerFee', type: 'uint256' },
-    { name: 'makerProtocolFee', type: 'uint256' },
-    { name: 'takerProtocolFee', type: 'uint256' },
-    { name: 'feeRecipient', type: 'address' },
-    { name: 'feeMethod', type: 'uint8' },
-    { name: 'side', type: 'uint8' },
-    { name: 'saleKind', type: 'uint8' },
-    { name: 'target', type: 'address' },
-    { name: 'howToCall', type: 'uint8' },
-    { name: 'calldata', type: 'bytes' },
-    { name: 'replacementPattern', type: 'bytes' },
-    { name: 'staticTarget', type: 'address' },
-    { name: 'staticExtradata', type: 'bytes' },
-    { name: 'paymentToken', type: 'address' },
-    { name: 'basePrice', type: 'uint256' },
-    { name: 'extra', type: 'uint256' },
-    { name: 'listingTime', type: 'uint256' },
-    { name: 'expirationTime', type: 'uint256' },
-    { name: 'salt', type: 'uint256' },
-    { name: 'nonce', type: 'uint256' }
-  ]
-};
-
 async function listOrderAtomicMatch() {
   const [deployer, seller, buyer] = await ethers.getSigners();
+  // mint new nft for seller
   const mintedNft = await mintNFT()
-  const proxyAddress = await registerProxy()
-  await approveNftTransfer(seller, proxyAddress)
+  // create proxy, so wyvern exchange can transfer nft through this proxy
+  const proxyAddress = await registerProxy(seller)
+  // allow proxy to transfer minted nft
+  await approveNftTransfer(seller, proxyAddress, mintedNft.tokenId)
+  // allow wyvern exchange to proxies
   await grantInitialAuthentication(deployed.wyvernExchangeWithBulkCancellations).catch(() => console.log('already grantInitialAuthentication'))
   const sellerNonce = deployed.sellerNonce ?? 0
   const buyerNonce = deployed.buyerNonce ?? 0
 
   // const paymentToken = StandardToken__factory.connect(deployed.standardToken)
-
-  const erc721Token = ERC721Mock__factory.connect(deployed.ERC721Mock, seller)
+  const erc721Token = ERC721Mock__factory.connect(deployed.erc721Mock, seller)
   console.log('nft owner before', await erc721Token.ownerOf(mintedNft.tokenId))
 
   // ================================ Create Seller Order ================================
-  const wyvernExchangeWithSellerSigner = WyvernExchangeWithBulkCancellations__factory.connect(deployed.wyvernExchangeWithBulkCancellations, seller)
-
   const sellerOrder: Order = {
     exchange: deployed.wyvernExchangeWithBulkCancellations,
     maker: seller.address,
@@ -106,10 +42,13 @@ async function listOrderAtomicMatch() {
     saleKind: SaleKind.FixedPrice,
     target: await erc721Token.getAddress(),
     howToCall: HowToCall.Call,
+    // calldata to call when match order
     calldata: erc721Token.interface.encodeFunctionData('safeTransferFrom(address,address,uint256)', [seller.address, ethers.ZeroAddress, ethers.toBigInt(mintedNft.tokenId)]),
+    // 4 byte đầu là function selector, những 32 bytes tiếp theo là bitmark(address from, address to, uint256 tokenId), from và tokenId là tham số đã biết, to là tham số chưa biết nên replacementPattern tại vị trí tham số này là 'ff..f'
     replacementPattern: '0x' + '0'.repeat(8) + '0'.repeat(64) + 'f'.repeat(64) + '0'.repeat(64),
     staticTarget: ethers.ZeroAddress,
     staticExtradata: '0x',
+    // zeroaddress for use native coin
     paymentToken: ethers.ZeroAddress,
     basePrice: ethers.parseEther('1').toString(), // 1 ETH
     extra: '0',
@@ -119,49 +58,14 @@ async function listOrderAtomicMatch() {
     nonce: sellerNonce,
   }
 
-  const sellOrderHash = await wyvernExchangeWithSellerSigner.hashToSign_(
-    [
-      sellerOrder.exchange,
-      sellerOrder.maker,
-      sellerOrder.taker,
-      sellerOrder.feeRecipient,
-      sellerOrder.target,
-      sellerOrder.staticTarget,
-      sellerOrder.paymentToken
-    ],
-    [
-      sellerOrder.makerRelayerFee,
-      sellerOrder.takerRelayerFee,
-      sellerOrder.makerProtocolFee,
-      sellerOrder.takerProtocolFee,
-      sellerOrder.basePrice,
-      sellerOrder.extra,
-      sellerOrder.listingTime,
-      sellerOrder.expirationTime,
-      sellerOrder.salt,
-    ],
-    sellerOrder.feeMethod,
-    sellerOrder.side,
-    sellerOrder.saleKind,
-    sellerOrder.howToCall,
-    sellerOrder.calldata,
-    sellerOrder.replacementPattern,
-    sellerOrder.staticExtradata
-  )
-
-  const sellerSignature = await seller.signTypedData(domain, types, sellerOrder)
-
-  // const sellerSignature = await seller.signMessage(ethers.getBytes(sellOrderHash))
+  // sign eip712
+  const sellerSignature = await signOrder(seller, sellerOrder)
 
   const sellerSplitSignature = ethers.Signature.from(sellerSignature)
 
   Object.assign(sellerOrder, { r: sellerSplitSignature.r, s: sellerSplitSignature.s, v: sellerSplitSignature.v })
-  // console.log({ sellOrderHash })
-  // console.log("sellerOrder", sellerOrder);
 
   // ================================ Create Buyer Order ================================
-  const wyvernExchangeWithBuyerSigner = WyvernExchangeWithBulkCancellations__factory.connect(deployed.wyvernExchangeWithBulkCancellations, buyer)
-
   const buyerOrder: Order = {
     exchange: deployed.wyvernExchangeWithBulkCancellations,
     maker: buyer.address,
@@ -176,8 +80,8 @@ async function listOrderAtomicMatch() {
     saleKind: SaleKind.FixedPrice,
     target: await erc721Token.getAddress(),
     howToCall: HowToCall.Call,
-    calldata: erc721Token.interface.encodeFunctionData('safeTransferFrom(address,address,uint256)', [ethers.ZeroAddress, buyer.address, ethers.toBigInt(mintedNft.tokenId)]),
-    replacementPattern: '0x' + '0'.repeat(8) + 'f'.repeat(64) + '0'.repeat(64) + '0'.repeat(64),
+    calldata: erc721Token.interface.encodeFunctionData('safeTransferFrom(address,address,uint256)', [seller.address, buyer.address, ethers.toBigInt(mintedNft.tokenId)]),
+    replacementPattern: '0x' + '0'.repeat(8) + '0'.repeat(64) + '0'.repeat(64) + '0'.repeat(64),
     staticTarget: ethers.ZeroAddress,
     staticExtradata: '0x',
     paymentToken: sellerOrder.paymentToken,
@@ -189,45 +93,14 @@ async function listOrderAtomicMatch() {
     nonce: buyerNonce,
   }
 
-  const buyOrderHash = await wyvernExchangeWithBuyerSigner.hashToSign_(
-    [
-      buyerOrder.exchange,
-      buyerOrder.maker,
-      buyerOrder.taker,
-      buyerOrder.feeRecipient,
-      buyerOrder.target,
-      buyerOrder.staticTarget,
-      buyerOrder.paymentToken
-    ],
-    [
-      buyerOrder.makerRelayerFee,
-      buyerOrder.takerRelayerFee,
-      buyerOrder.makerProtocolFee,
-      buyerOrder.takerProtocolFee,
-      buyerOrder.basePrice,
-      buyerOrder.extra,
-      buyerOrder.listingTime,
-      buyerOrder.expirationTime,
-      buyerOrder.salt,
-    ],
-    buyerOrder.feeMethod,
-    buyerOrder.side,
-    buyerOrder.saleKind,
-    buyerOrder.howToCall,
-    buyerOrder.calldata,
-    buyerOrder.replacementPattern,
-    buyerOrder.staticExtradata
-  )
-
-  const buyerSignature = await seller.signTypedData(domain, types, buyerOrder)
+  const buyerSignature = await signOrder(buyer, buyerOrder)
 
   const buyerSplitSignature = ethers.Signature.from(buyerSignature)
 
   Object.assign(buyerOrder, { r: buyerSplitSignature.r, s: buyerSplitSignature.s, v: buyerSplitSignature.v })
-  // console.log({ buyOrderHash })
-  // console.log(buyerOrder)
 
   // ================================ Call Atomic Match ================================
+  const wyvernExchangeWithBuyerSigner = WyvernExchangeWithBulkCancellations__factory.connect(deployed.wyvernExchangeWithBulkCancellations, buyer)
   const tx = await wyvernExchangeWithBuyerSigner.atomicMatch_(
     [
       buyerOrder.exchange,

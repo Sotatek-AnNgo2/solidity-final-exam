@@ -3,9 +3,9 @@ import { readData } from '../util/file';
 import { ERC721Mock__factory } from '../../typechain';
 
 async function mintNFT(mintFor?: string) {
-  const [deployer, seller, buyer] = await ethers.getSigners();
+  const [deployer, seller] = await ethers.getSigners();
   const deployed = readData();
-  const contractAddress = deployed.ERC721Mock; // Replace with your deployed contract address
+  const contractAddress = deployed.erc721Mock; // Replace with your deployed contract address
 
   const contract = ERC721Mock__factory.connect(contractAddress, deployer);
 
