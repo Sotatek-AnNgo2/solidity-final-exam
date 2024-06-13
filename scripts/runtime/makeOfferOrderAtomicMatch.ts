@@ -10,7 +10,7 @@ import signOrder, { Order } from "./signOrder";
 
 const deployed = readData()
 
-async function listOrderAtomicMatch() {
+async function makeOfferOrderAtomicMatch() {
   const [deployer, seller, buyer] = await ethers.getSigners();
   // mint new nft for seller
   const mintedNft = await mintNFT()
@@ -26,6 +26,42 @@ async function listOrderAtomicMatch() {
   // const paymentToken = StandardToken__factory.connect(deployed.standardToken)
   const erc721Token = ERC721Mock__factory.connect(deployed.erc721Mock, seller)
   console.log('nft owner before', await erc721Token.ownerOf(mintedNft.tokenId))
+  // console.log('seller ether balance', await seller.)
+  
+    // ================================ Create Buyer Order ================================
+    const buyerOrder: Order = {
+      exchange: deployed.wyvernExchangeWithBulkCancellations,
+      maker: buyer.address,
+      taker: ethers.ZeroAddress,
+      makerRelayerFee: 0,
+      takerRelayerFee: 0,
+      makerProtocolFee: 0,
+      takerProtocolFee: 0,
+      feeRecipient: ethers.ZeroAddress,
+      feeMethod: FeeMethod.ProtocolFee,
+      side: Side.Buy,
+      saleKind: SaleKind.FixedPrice,
+      target: await erc721Token.getAddress(),
+      howToCall: HowToCall.Call,
+      calldata: erc721Token.interface.encodeFunctionData('safeTransferFrom(address,address,uint256)', [seller.address, buyer.address, ethers.toBigInt(mintedNft.tokenId)]),
+      // already know all arguments => 0x0..0 bitmask
+      replacementPattern: '0x' + '0'.repeat(8) + '0'.repeat(64) + '0'.repeat(64) + '0'.repeat(64),
+      staticTarget: ethers.ZeroAddress,
+      staticExtradata: '0x',
+      paymentToken: ethers.ZeroAddress,
+      basePrice: ethers.parseEther('10').toString(), // 10 ETH
+      extra: '0',
+      listingTime: Math.floor(Date.now() / 1000),
+      expirationTime: Math.floor(Date.now() / 1000) + 3600, // make offer in 1 hour
+      salt: Math.floor(Math.random() * 1000000),
+      nonce: buyerNonce,
+    }
+
+    const buyerSignature = await signOrder(buyer, buyerOrder)
+
+    const buyerSplitSignature = ethers.Signature.from(buyerSignature)
+
+    Object.assign(buyerOrder, { r: buyerSplitSignature.r, s: buyerSplitSignature.s, v: buyerSplitSignature.v })
 
   // ================================ Create Seller Order ================================
   const sellerOrder: Order = {
@@ -42,17 +78,16 @@ async function listOrderAtomicMatch() {
     saleKind: SaleKind.FixedPrice,
     target: await erc721Token.getAddress(),
     howToCall: HowToCall.Call,
-    calldata: erc721Token.interface.encodeFunctionData('safeTransferFrom(address,address,uint256)', [seller.address, ethers.ZeroAddress, ethers.toBigInt(mintedNft.tokenId)]),
-    // 4 byte đầu là function selector, những 32 bytes tiếp theo là bitmark(address from, address to, uint256 tokenId), from và tokenId là tham số đã biết, to là tham số chưa biết nên replacementPattern tại vị trí tham số này là 'ff..f' -> nhị phân sẽ là 111.11
-    replacementPattern: '0x' + '0'.repeat(8) + '0'.repeat(64) + 'f'.repeat(64) + '0'.repeat(64),
+    calldata: buyerOrder.calldata,
+    replacementPattern: '0x' + '0'.repeat(8) + '0'.repeat(64) + '0'.repeat(64) + '0'.repeat(64),
     staticTarget: ethers.ZeroAddress,
     staticExtradata: '0x',
     // zeroaddress => use native coin
     paymentToken: ethers.ZeroAddress,
-    basePrice: ethers.parseEther('1').toString(), // 1 ETH
+    basePrice: buyerOrder.basePrice, // 1 ETH
     extra: '0',
-    listingTime: Math.floor(Date.now() / 1000),
-    expirationTime: Math.floor(Date.now() / 1000) + 3600 * 10, // 10 hours from now
+    listingTime: buyerOrder.listingTime,
+    expirationTime: buyerOrder.expirationTime, // 10 hours from now
     salt: Math.floor(Math.random() * 1000000),
     nonce: sellerNonce,
   }
@@ -63,40 +98,6 @@ async function listOrderAtomicMatch() {
   const sellerSplitSignature = ethers.Signature.from(sellerSignature)
 
   Object.assign(sellerOrder, { r: sellerSplitSignature.r, s: sellerSplitSignature.s, v: sellerSplitSignature.v })
-
-  // ================================ Create Buyer Order ================================
-  const buyerOrder: Order = {
-    exchange: deployed.wyvernExchangeWithBulkCancellations,
-    maker: buyer.address,
-    taker: ethers.ZeroAddress,
-    makerRelayerFee: 0,
-    takerRelayerFee: 0,
-    makerProtocolFee: 0,
-    takerProtocolFee: 0,
-    feeRecipient: ethers.ZeroAddress,
-    feeMethod: FeeMethod.ProtocolFee,
-    side: Side.Buy,
-    saleKind: SaleKind.FixedPrice,
-    target: await erc721Token.getAddress(),
-    howToCall: HowToCall.Call,
-    calldata: erc721Token.interface.encodeFunctionData('safeTransferFrom(address,address,uint256)', [seller.address, buyer.address, ethers.toBigInt(mintedNft.tokenId)]),
-    replacementPattern: '0x' + '0'.repeat(8) + '0'.repeat(64) + '0'.repeat(64) + '0'.repeat(64),
-    staticTarget: ethers.ZeroAddress,
-    staticExtradata: '0x',
-    paymentToken: sellerOrder.paymentToken,
-    basePrice: sellerOrder.basePrice, // 1 ETH
-    extra: sellerOrder.extra,
-    listingTime: sellerOrder.listingTime,
-    expirationTime: sellerOrder.expirationTime, // 10 hours from now
-    salt: Math.floor(Math.random() * 1000000),
-    nonce: buyerNonce,
-  }
-
-  const buyerSignature = await signOrder(buyer, buyerOrder)
-
-  const buyerSplitSignature = ethers.Signature.from(buyerSignature)
-
-  Object.assign(buyerOrder, { r: buyerSplitSignature.r, s: buyerSplitSignature.s, v: buyerSplitSignature.v })
 
   // ================================ Call Atomic Match ================================
   const wyvernExchangeWithBuyerSigner = WyvernExchangeWithBulkCancellations__factory.connect(deployed.wyvernExchangeWithBulkCancellations, buyer)
@@ -173,4 +174,4 @@ async function listOrderAtomicMatch() {
   // console.log(result)
 }
 
-listOrderAtomicMatch()
+makeOfferOrderAtomicMatch()
