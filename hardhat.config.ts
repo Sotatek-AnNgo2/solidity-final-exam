@@ -77,6 +77,11 @@ const hardhatConfig: HardhatUserConfig = {
   typechain: {
     outDir: 'typechain',
     target: 'ethers-v6',
+  },
+  gasReporter: {
+    currency: 'USD',
+    enabled: true,
+    // coinmarketcap: "abc123...",
   }
 };
 

@@ -26,8 +26,8 @@ async function makeOfferOrderAtomicMatch() {
   // const paymentToken = StandardToken__factory.connect(deployed.standardToken)
   const erc721Token = ERC721Mock__factory.connect(deployed.erc721Mock, seller)
   console.log('nft owner before', await erc721Token.ownerOf(mintedNft.tokenId))
-  // console.log('seller ether balance', await seller.)
-  
+  // console.log('seller ether before balance', await ethers.provider.getBalance(seller.address))
+
     // ================================ Create Buyer Order ================================
     const buyerOrder: Order = {
       exchange: deployed.wyvernExchangeWithBulkCancellations,
@@ -171,6 +171,8 @@ async function makeOfferOrderAtomicMatch() {
   await tx.wait()
 
   console.log('nft owner after', await erc721Token.ownerOf(mintedNft.tokenId))
+  // console.log('seller ether after balance', await ethers.provider.getBalance(seller.address))
+
   // console.log(result)
 }
 

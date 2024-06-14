@@ -2,6 +2,7 @@ import { ethers, upgrades, deployments } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { it } from "mocha";
 import { expect } from "chai";
+import { SaleKind, Side } from "../scripts/util/enum";
 
 
 describe("WyvernExchange contract", function () {
@@ -11,7 +12,7 @@ describe("WyvernExchange contract", function () {
 
     const { registry } = await deployWyvernProxyRegistryFixture()
     const { tokenTransferProxy } = await deployWyvernTokenTransferProxyFixture(await registry.getAddress())
-    const { token } = await deployStandardTokenFixture()
+    const { token } = await deployWyvernTokenFixture()
     const { protocolFee } = await deployProtocolFeeFixture()
 
     console.log(await registry.getAddress())
@@ -41,11 +42,11 @@ describe("WyvernExchange contract", function () {
     return { tokenTransferProxy: wyvernTokenTransferProxy }
   }
 
-  async function deployStandardTokenFixture() {
-    const StandardToken = await ethers.getContractFactory("StandardToken")
-    const standardToken = await StandardToken.deploy()
-    await standardToken.waitForDeployment()
-    return { token: standardToken }
+  async function deployWyvernTokenFixture() {
+    const WyvernToken = await ethers.getContractFactory("WyvernToken")
+    const wyvernToken = await WyvernToken.deploy(185976814178002)
+    await wyvernToken.waitForDeployment()
+    return { token: wyvernToken }
   }
 
   async function deployProtocolFeeFixture() {
@@ -56,19 +57,38 @@ describe("WyvernExchange contract", function () {
   }
 
   describe('Deployment', () => {
-
     it('Should deploy success', async () => {
-      await deployWyvernExchangeFixture();
+      const { exchange } = await loadFixture(deployWyvernExchangeFixture);
+      expect(await exchange.getAddress()).not.equal(ethers.ZeroAddress)
+    })
+  })
+
+  describe('Runtime', async () => {
+    it('Should success replace pattern', async () => {
+      const { exchange } = await loadFixture(deployWyvernExchangeFixture);
+      const result = await exchange.guardedArrayReplace('0xff', '0x00', '0xff')
+      expect(result).equal('0x00')
+    })
+
+    it('Should success replace pattern', async () => {
+      const { exchange } = await loadFixture(deployWyvernExchangeFixture);
+      const result = await exchange.guardedArrayReplace('0xff', '0x00', '0x00')
+      expect(result).equal('0xff')
+    })
+
+    it('Should calculate price', async () => {
+      const { exchange } = await loadFixture(deployWyvernExchangeFixture);
+      const result = await exchange.calculateFinalPrice(Side.Buy, SaleKind.FixedPrice, 10, 0, Date.now(), Date.now())
+      expect(result).equal(10)
+    })
+
+    it('Should calculate price', async () => {
+      const { exchange } = await loadFixture(deployWyvernExchangeFixture);
+      const result = await exchange.calculateFinalPrice(Side.Buy, SaleKind.DutchAuction, 1000, 0, Date.now(), Date.now() + 3600)
+      expect(result).equal(10)
     })
 
   })
-
-  // async function deploySwapperFixtureWithFee() {
-  //   const { swapper, ...rest } = await loadFixture(deploySwapperFixture);
-  //   await swapper.setFee(FEE);
-
-  //   return { swapper, ...rest };
-  // }
 
   // async function makeSwapRequest() {
   //   const { swapper, sender, receiver, tokenA, tokenB, treasury } =
