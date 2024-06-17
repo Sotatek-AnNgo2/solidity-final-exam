@@ -14,4 +14,5 @@ npx hardhat node
 ```
 ### test coverage
 ```
+npx hardhat coverage
 ```
